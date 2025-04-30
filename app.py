@@ -191,7 +191,7 @@ with eui.nav_panel("Hb and ferritin prediction"):
         ui.input_checkbox("show_Hb", "Hb", False)
 
 
-    @render.plot
+    @render.plot(height=500)
     def plot():
         don_freq = input.don_freq()
         dt = int(365 / don_freq)
