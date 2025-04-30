@@ -288,7 +288,6 @@ with eui.nav_panel("Hb and ferritin prediction"):
             ax1.plot(t_interp, Hb, "k-", alpha=0.4, zorder=0)
             ax2.plot(t_interp, fer, "k-", alpha=0.4, zorder=0)
             if input.uncertainty():
-                # TODO set uncertainties
 
                 donor_data_low = DonorData(
                     t_interp,
