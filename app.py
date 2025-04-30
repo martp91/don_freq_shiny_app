@@ -35,8 +35,8 @@ MALE_HEIGHT = 1.85
 FEMALE_HEIGHT = 1.71
 
 #TODO: Set male/female best params
-MODEL_PARAMS_MALE = ModelParams(1 / 15, 1 / 230, 1, 1.15, -0.28, 3.19, 6.7)
-MODEL_PARAMS_FEMALE = ModelParams(1 / 15, 1 / 230, 1, 1.15, -0.28, 3.19, 6.7)
+MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
+MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 6.7)
 
 #TODO: ui.tooltip hover info boxes
 
@@ -157,27 +157,27 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
 
 with eui.nav_panel("Hb and ferritin prediction"):
 
-    @reactive.effect
-    def set_default_sex_height_weight():
-        if input.sex() == "2":
-            weight_val = MALE_WEIGHT
-            height_val = MALE_HEIGHT
-            fer_val = MALE_FER
-            hb_val = MALE_HB
-            don_freq_val = 5
-        else:
-            weight_val = FEMALE_WEIGHT
-            height_val = FEMALE_HEIGHT
-            fer_val = FEMALE_FER
-            hb_val = FEMALE_HB
-            don_freq_val = 3
+    # @reactive.effect
+    # def set_default_sex_height_weight():
+    #     if input.sex() == "2":
+    #         weight_val = MALE_WEIGHT
+    #         height_val = MALE_HEIGHT
+    #         fer_val = MALE_FER
+    #         hb_val = MALE_HB
+    #         don_freq_val = 5
+    #     else:
+    #         weight_val = FEMALE_WEIGHT
+    #         height_val = FEMALE_HEIGHT
+    #         fer_val = FEMALE_FER
+    #         hb_val = FEMALE_HB
+    #         don_freq_val = 3
 
-        # when changing sex update everything to mean male/female?
-        ui.update_numeric("height", value=height_val)
-        ui.update_numeric("weight", value=weight_val)
-        ui.update_numeric("fer_base", value=fer_val)
-        ui.update_numeric("Hb_base", value=hb_val)
-        ui.update_numeric("don_freq", value=don_freq_val)
+    #     # when changing sex update everything to mean male/female?
+    #     ui.update_numeric("height", value=height_val)
+    #     ui.update_numeric("weight", value=weight_val)
+    #     ui.update_numeric("fer_base", value=fer_val)
+    #     ui.update_numeric("Hb_base", value=hb_val)
+    #     ui.update_numeric("don_freq", value=don_freq_val)
 
     Hb_final_val = reactive.value()
     fer_final_val = reactive.value()
@@ -284,12 +284,20 @@ with eui.nav_panel("Hb and ferritin prediction"):
 
 
 
-def create_long_term_ferritin_table(Hb_base=9, BW=80, V=5, years_future=2, model_params="M"):
+def create_long_term_ferritin_table(years_future=2, sex="Male"):
     #TODO: set sex to change these values
-    if model_params == "M":
+    if sex == "Male":
+        Hb_base = MALE_HB 
+        BW = MALE_WEIGHT
+        V = blood_volume_func(MALE_HEIGHT, BW, 'male')
         model_params = MODEL_PARAMS_MALE
-    elif model_params == "F":
+    elif sex == "Female":
+        Hb_base = FEMALE_HB 
+        BW = FEMALE_WEIGHT
+        V = blood_volume_func(FEMALE_HEIGHT, BW, 'female')
         model_params = MODEL_PARAMS_FEMALE
+    else:
+        raise ValueError(f"sex should be any of Male/Female was {sex}")
 
     fer_bases = [
         20,
@@ -371,7 +379,7 @@ with eui.nav_panel("Donation frequency table"):
 
     @render.data_frame
     def table_df():
-        table = create_long_term_ferritin_table(years_future=input.years_future())
+        table = create_long_term_ferritin_table(years_future=input.years_future(), sex=input.sex_df())
 
         values = table.values
         cell_styles = [
@@ -432,6 +440,6 @@ with eui.nav_panel("Donation frequency table"):
         "input.toggle_button_df % 2 == 1",  # Show when button is clicked an odd number of times
         ui.layout_columns([
             ui.input_numeric("years_future", "Years into the future", 2, min=1, max=20, step=1),
-            ui.input_radio_buttons("sex_df", "Sex", {"1": "Female", "2": "Male"}),
+            ui.input_radio_buttons("sex_df", "Sex", {"Female": "Female", "Male": "Male"}),
         ])
     )

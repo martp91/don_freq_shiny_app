@@ -3,7 +3,7 @@ from scipy.integrate import odeint
 
 def blood_volume_func(height, weight, sex):
     "height in m, weight in kg"
-    if sex == "male":
+    if sex.lower() == "male":
         return 0.3669 * height**3 + 0.03219 * weight + 0.6041
     else:
         return 0.3561 * height**3 + 0.03308 * weight + 0.1833
