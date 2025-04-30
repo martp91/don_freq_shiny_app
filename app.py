@@ -34,9 +34,11 @@ FEMALE_WEIGHT = 73
 MALE_HEIGHT = 1.85
 FEMALE_HEIGHT = 1.71
 
+#TODO: Set male/female best params
 MODEL_PARAMS_MALE = ModelParams(1 / 15, 1 / 230, 1, 1.15, -0.28, 3.19, 6.7)
 MODEL_PARAMS_FEMALE = ModelParams(1 / 15, 1 / 230, 1, 1.15, -0.28, 3.19, 6.7)
 
+#TODO: ui.tooltip hover info boxes
 
 def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
     ax1, ax2 = axs
@@ -282,7 +284,8 @@ with eui.nav_panel("Hb and ferritin prediction"):
 
 
 
-def create_long_term_ferritin_table(Hb_base=9, BW=80, V=5, ndons=5, model_params="M"):
+def create_long_term_ferritin_table(Hb_base=9, BW=80, V=5, years_future=2, model_params="M"):
+    #TODO: set sex to change these values
     if model_params == "M":
         model_params = MODEL_PARAMS_MALE
     elif model_params == "F":
@@ -307,9 +310,11 @@ def create_long_term_ferritin_table(Hb_base=9, BW=80, V=5, ndons=5, model_params
         400,
         500,
     ]
+
     don_freqs = [1, 2, 3, 4, 5]
     output = np.zeros((len(fer_bases), len(don_freqs)))
     for i, don_freq in enumerate(don_freqs):
+        ndons = years_future * don_freq
         dt = int(365 / don_freq)
         t_end = ndons * dt
         t = np.arange(0, t_end, dt).astype(int)
@@ -326,61 +331,22 @@ def create_long_term_ferritin_table(Hb_base=9, BW=80, V=5, ndons=5, model_params
 
 
 with eui.nav_panel("Donation frequency table"):
-    table = create_long_term_ferritin_table()
+    @render.ui
+    def make_table():
 
-    values = table.values
-    cell_styles = [
-        {
-            "location": "body",
-            "cols": [0],  # Specific column
-            "style": {"font-weight": "bold"},
-        }
-    ]
-
-    for i in range(values.shape[0]):
-        for j in range(values.shape[1]):
-            if j > 0:
-                if values[i, j] < 15:
-                    cell_styles.append(
-                        {
-                            "location": "body",
-                            "rows": [i],  # Specific row
-                            "cols": [j],  # Specific column
-                            "style": {"background-color": "red"},
-                        }
-                    )
-                elif values[i, j] < 30:
-                    cell_styles.append(
-                        {
-                            "location": "body",
-                            "rows": [i],  # Specific row
-                            "cols": [j],  # Specific column
-                            "style": {"background-color": "orange"},
-                        }
-                    )
-                else:
-                    cell_styles.append(
-                        {
-                            "location": "body",
-                            "rows": [i],  # Specific row
-                            "cols": [j],  # Specific column
-                            "style": {"background-color": "green"},
-                        }
-                    )
-
-    ui.markdown(
-        "Click **Start ferritin** in the table below to get optimal donation frequency."
-    )
+        return ui.markdown(
+            "Click **Start ferritin** in the table below to get optimal donation frequency."
+        )
 
     @render.ui
     def rows():
         rows = table_df.cell_selection().get("rows", [])
-        row = table.iloc[rows]
+        row = table_df.data().iloc[rows]
         start_ferritin = row["Start ferritin"]
         if not isinstance(start_ferritin, (float, int)):
             return ""
         vals = row[1:].values
-        dfs = table.columns[1:]
+        dfs = table_df.data().columns[1:]
         optimal_df = dfs.max()
         end_fer = None
         for i, val in enumerate(vals):
@@ -405,6 +371,47 @@ with eui.nav_panel("Donation frequency table"):
 
     @render.data_frame
     def table_df():
+        table = create_long_term_ferritin_table(years_future=input.years_future())
+
+        values = table.values
+        cell_styles = [
+            {
+                "location": "body",
+                "cols": [0],  # Specific column
+                "style": {"font-weight": "bold"},
+            }
+        ]
+
+        for i in range(values.shape[0]):
+            for j in range(values.shape[1]):
+                if j > 0:
+                    if values[i, j] < 15:
+                        cell_styles.append(
+                            {
+                                "location": "body",
+                                "rows": [i],  # Specific row
+                                "cols": [j],  # Specific column
+                                "style": {"background-color": "red"},
+                            }
+                        )
+                    elif values[i, j] < 30:
+                        cell_styles.append(
+                            {
+                                "location": "body",
+                                "rows": [i],  # Specific row
+                                "cols": [j],  # Specific column
+                                "style": {"background-color": "orange"},
+                            }
+                        )
+                    else:
+                        cell_styles.append(
+                            {
+                                "location": "body",
+                                "rows": [i],  # Specific row
+                                "cols": [j],  # Specific column
+                                "style": {"background-color": "green"},
+                            }
+                        )
         return render.DataGrid(
             table,
             styles=cell_styles,
@@ -419,4 +426,12 @@ with eui.nav_panel("Donation frequency table"):
         value=30,
         min=0,
         max=1000,
+    )
+    ui.input_action_button("toggle_button_df", "Show/Hide Extra inputs"),
+    ui.panel_conditional(
+        "input.toggle_button_df % 2 == 1",  # Show when button is clicked an odd number of times
+        ui.layout_columns([
+            ui.input_numeric("years_future", "Years into the future", 2, min=1, max=20, step=1),
+            ui.input_radio_buttons("sex_df", "Sex", {"1": "Female", "2": "Male"}),
+        ])
     )
