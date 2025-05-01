@@ -1,15 +1,35 @@
 from collections import namedtuple
 from copy import copy
+from pathlib import Path
 import matplotlib.pyplot as plt
-
 import numpy as np
 import pandas as pd
 
-from shiny import render, ui, reactive
+import matplotlib as mpl
+
+mpl.rcParams['axes.spines.right'] = False
+mpl.rcParams['axes.spines.top'] = False
+
+from shiny import render, reactive
 from shiny.express import input
-from shiny.express import ui as eui
+from shiny.express import ui #as ui
+from shiny import ui as uis
 
 from model import Hb_fer_model_iron, blood_volume_func
+
+#Should do this to scale plots size correctly?
+#But need to move to core shiny so change everything...
+# app_ui = uis.page_fluid(
+#     uis.tags.style("""
+#         @media (max-width: 500px) {
+#             .shiny-plot-output {
+#                 width: 100% !important;
+#             }
+#         }
+#     """),
+    
+#     # Other UI components go here
+# )
 
 DonorData = namedtuple(
     "DonorData",
@@ -155,7 +175,7 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
                 )
 
 
-with eui.nav_panel("Hb and ferritin prediction"):
+with ui.nav_panel("Hb and ferritin prediction"):
 
     # @reactive.effect
     # def set_default_sex_height_weight():
@@ -246,7 +266,12 @@ with eui.nav_panel("Hb and ferritin prediction"):
                     
     @render.ui
     def Hb_fer_final():
-        fer_text = f"Ferritin after {input.ndons()} donations **{fer_final_val.get():.0f} ng/mL**"
+        color = 'green'
+        if fer_final_val.get() < 15:
+            color = 'red'
+        elif fer_final_val.get() < 30:
+            color = 'orange'
+        fer_text = f"Ferritin after {input.ndons()} donations <span style='color:{color}'>**{fer_final_val.get():.0f} ng/mL**</span>"
         Hb_text = f"Hb after {input.ndons()} donations **{Hb_final_val.get():.1f} mmol/L**"
         if input.show_ferritin():
             if input.show_Hb():
@@ -267,9 +292,9 @@ with eui.nav_panel("Hb and ferritin prediction"):
         ui.input_checkbox("interp", "Interpolate in-between", False)
         
     ui.input_action_button("toggle_button", "Show/Hide Extra inputs"),
-    ui.panel_conditional(
+    uis.panel_conditional(
         "input.toggle_button % 2 == 1",  # Show when button is clicked an odd number of times
-        ui.layout_columns([
+        uis.layout_columns([
             ui.input_numeric("ndons", "Number of donations", 5, min=2, max=20, step=1),
             ui.input_checkbox("uncertainty", "Uncertainty estimate", False),
             ui.input_radio_buttons("sex", "Sex", {"1": "Female", "2": "Male"}),
@@ -338,7 +363,7 @@ def create_long_term_ferritin_table(years_future=2, sex="Male"):
     return df
 
 
-with eui.nav_panel("Donation frequency table"):
+with ui.nav_panel("Donation frequency table"):
     @render.ui
     def make_table():
 
@@ -369,11 +394,17 @@ with eui.nav_panel("Donation frequency table"):
             end_fer = start_ferritin
         if end_fer is None:
             end_fer = vals[-1]
+            
+        color = 'green'
+        if end_fer < 15:
+            color = 'red'
+        elif end_fer < 30:
+            color = 'orange'
         return ui.markdown(
             f"""
             Optimal donation frequency **{optimal_df}** for start ferritin: {start_ferritin} ng/mL.
             <br>
-            Long-term ferritin **{end_fer} ng/mL** for this donation frequency
+            Long-term ferritin <span style='color:{color}'>**{end_fer} ng/mL**</span> for this donation frequency
             """
         )
 
@@ -436,9 +467,9 @@ with eui.nav_panel("Donation frequency table"):
         max=1000,
     )
     ui.input_action_button("toggle_button_df", "Show/Hide Extra inputs"),
-    ui.panel_conditional(
+    uis.panel_conditional(
         "input.toggle_button_df % 2 == 1",  # Show when button is clicked an odd number of times
-        ui.layout_columns([
+        uis.layout_columns([
             ui.input_numeric("years_future", "Years into the future", 2, min=1, max=20, step=1),
             ui.input_radio_buttons("sex_df", "Sex", {"Female": "Female", "Male": "Male"}),
         ])
