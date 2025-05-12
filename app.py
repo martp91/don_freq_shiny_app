@@ -226,7 +226,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
         with ui.card_header():
             with ui.tooltip(placement='right'):
                 ui.span("Simulated donor carreer", question_circle_fill)
-                "This plot shows the predicted ferritin (and Hb) level prior to each donation, given the parameters set below"
+                "This plot shows the predicted ferritin (and Hb) level prior to each whole-blood donation given the parameters set below"
                 
         with ui.layout_columns(fill=False):
             ui.input_checkbox_group("show_ferritin_Hb", None, {"Ferritin": "Ferritin", "Hb": "Hb"}, selected=["Ferritin"], inline=True)
@@ -296,7 +296,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
 
     @render.text
     def _():
-        return f"Showing simulated {input.sex()} donor with weight of {input.weight()} kg and height {input.height()} m. Donating {input.don_freq()} per year."
+        return f"Showing simulated {input.sex()} donor with weight of {input.weight()} kg and height {input.height()} m. Donating whole-blood {input.don_freq()} times per year."
     
     ui.input_action_button("toggle_button", "Show/Hide Extra inputs")
 
