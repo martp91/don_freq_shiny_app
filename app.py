@@ -7,29 +7,16 @@ import pandas as pd
 
 import matplotlib as mpl
 
-mpl.rcParams['axes.spines.right'] = False
-mpl.rcParams['axes.spines.top'] = False
+mpl.rcParams["axes.spines.right"] = False
+mpl.rcParams["axes.spines.top"] = False
 
 from shiny import render, reactive
 from shiny.express import input
-from shiny.express import ui #as ui
+from shiny.express import ui  # as ui
 from shiny import ui as uis
 
 from model import Hb_fer_model_iron, blood_volume_func
 
-#Should do this to scale plots size correctly?
-#But need to move to core shiny so change everything...
-# app_ui = uis.page_fluid(
-#     uis.tags.style("""
-#         @media (max-width: 500px) {
-#             .shiny-plot-output {
-#                 width: 100% !important;
-#             }
-#         }
-#     """),
-    
-#     # Other UI components go here
-# )
 
 DonorData = namedtuple(
     "DonorData",
@@ -54,11 +41,12 @@ FEMALE_WEIGHT = 73
 MALE_HEIGHT = 1.85
 FEMALE_HEIGHT = 1.71
 
-#TODO: Set male/female best params
+# TODO: Set male/female best params
 MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
 MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 6.7)
 
-#TODO: ui.tooltip hover info boxes
+# TODO: ui.tooltip hover info boxes
+
 
 def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
     ax1, ax2 = axs
@@ -74,7 +62,8 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         )
         donor_data_high = copy(donor_data)
         donor_data_high = donor_data_high._replace(
-            Hb_base=donor_data_high.Hb_base + 0.4, fer_base=donor_data_high.fer_base * 1.1
+            Hb_base=donor_data_high.Hb_base + 0.4,
+            fer_base=donor_data_high.fer_base * 1.1,
         )
 
         model_params_low = ModelParams(
@@ -118,15 +107,19 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         Hb_interp, fer_interp = model(donor_data_interp, model_params)
 
         if input.uncertainty():
-            donor_data_low = donor_data_low._replace(don_times=t_interp, taken_vol=tv_interp)
-            donor_data_high = donor_data_high._replace(don_times=t_interp, taken_vol=tv_interp)
+            donor_data_low = donor_data_low._replace(
+                don_times=t_interp, taken_vol=tv_interp
+            )
+            donor_data_high = donor_data_high._replace(
+                don_times=t_interp, taken_vol=tv_interp
+            )
             Hb_low_interp, fer_low_interp = model(donor_data_low, model_params_low)
             Hb_high_interp, fer_high_interp = model(donor_data_high, model_params_high)
 
     if ax1 is not None:
 
         ax1.plot(t, Hb, "ko", label="donation")
-        mask_Hb_thres = Hb < Hb_thres
+        mask_Hb_thres = Hb < float(Hb_thres.get())
         ax1.plot(t[mask_Hb_thres], Hb[mask_Hb_thres], ls="", color="red", marker="o")
         ax1.plot(t[0], Hb[0], "ko", mfc="white", label="intake")
         ax1.set(
@@ -134,7 +127,7 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             ylabel="Hb [mmol/L]",
             ylim=[Hb.min() * 0.9, Hb.max() + 0.5],
         )
-        ax1.axhline(Hb_thres, ls=":", color="r")
+        ax1.axhline(float(Hb_thres.get()), ls=":", color="r")
         if input.uncertainty():
             ax1.plot(t, Hb_low, "_", color="grey")
             ax1.plot(t, Hb_high, "_", color="grey")
@@ -173,31 +166,18 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
                 ax2.fill_between(
                     t_interp, fer_low_interp, fer_high_interp, color="grey", alpha=0.3
                 )
+                
+    if ax1 is None:
+        return ax2
+    if ax2 is None:
+        return ax1
+    return ax1, ax2
+
+ 
 
 
 with ui.nav_panel("Hb and ferritin prediction"):
 
-    # @reactive.effect
-    # def set_default_sex_height_weight():
-    #     if input.sex() == "2":
-    #         weight_val = MALE_WEIGHT
-    #         height_val = MALE_HEIGHT
-    #         fer_val = MALE_FER
-    #         hb_val = MALE_HB
-    #         don_freq_val = 5
-    #     else:
-    #         weight_val = FEMALE_WEIGHT
-    #         height_val = FEMALE_HEIGHT
-    #         fer_val = FEMALE_FER
-    #         hb_val = FEMALE_HB
-    #         don_freq_val = 3
-
-    #     # when changing sex update everything to mean male/female?
-    #     ui.update_numeric("height", value=height_val)
-    #     ui.update_numeric("weight", value=weight_val)
-    #     ui.update_numeric("fer_base", value=fer_val)
-    #     ui.update_numeric("Hb_base", value=hb_val)
-    #     ui.update_numeric("don_freq", value=don_freq_val)
 
     Hb_final_val = reactive.value()
     fer_final_val = reactive.value()
@@ -205,14 +185,11 @@ with ui.nav_panel("Hb and ferritin prediction"):
     fer_final_val_low = reactive.value()
     Hb_final_val_high = reactive.value()
     fer_final_val_high = reactive.value()
+    
+    Hb_thres = reactive.value()
 
-    with ui.layout_columns():
-        ui.input_checkbox("show_ferritin", "Ferritin", True)
-        ui.input_checkbox("show_Hb", "Hb", False)
-
-
-    @render.plot
-    def plot():
+    @reactive.calc
+    def calc_donor_model():
         don_freq = input.don_freq()
         dt = int(365 / don_freq)
         t_end = input.ndons() * dt
@@ -225,35 +202,43 @@ with ui.nav_panel("Hb and ferritin prediction"):
         fer_base = input.fer_base()
         if fer_base is None:
             fer_base = 70
-
+        # print(input.viewport_width())
         # TODO set donor data and model params
-        if input.sex() == "2":  # males
-            BW = input.weight()
-            V = blood_volume_func(input.height(), BW, "male")
-            Hb_thres = 8.4
+        BW = input.weight()
+        V = blood_volume_func(input.height(), BW, input.sex())
+        if input.sex() == "Male":  # males
+            Hb_thres.set(8.4)
             model_params = MODEL_PARAMS_MALE
         else:
-            BW = input.weight()
-            V = blood_volume_func(input.height(), BW, "female")
-            Hb_thres = 7.8
+            Hb_thres.set(7.8)
             model_params = MODEL_PARAMS_FEMALE
 
         donor_data = DonorData(t, tv, V, BW, Hb_base, fer_base)
-        if input.show_ferritin():
-            if input.show_Hb():
-                f, (ax2, ax1) = plt.subplots(2, 1, sharex=True)
-            else:
-                f, ax2 = plt.subplots(1)
-                ax1 = None
-        else:
-            if input.show_Hb():
-                f, ax1 = plt.subplots(1)
-                ax2 = None
-            else:
-                return
+        return donor_data, model_params
         
-        plot_Hb_ferritin((ax1, ax2), donor_data, model_params, Hb_thres)
         
+    with ui.card(full_screen=True, fill=False):
+        with ui.layout_columns():
+            ui.input_checkbox("show_ferritin", "Ferritin", True)
+            ui.input_checkbox("show_Hb", "Hb", False)
+        with ui.layout_columns():
+            with ui.panel_conditional("input.show_ferritin"):
+                #TODO: make sure these are not recalculated?
+                @render.plot
+                def plot_fer():  # Match the unique ID here
+                    donor_data, model_params = calc_donor_model()
+                    f, ax = plt.subplots(1)
+                    plot_Hb_ferritin((None, ax), donor_data, model_params, Hb_thres)
+
+            with ui.panel_conditional("input.show_Hb"):
+                @render.plot
+                def plot_Hb():  # Match the unique ID here
+                    donor_data, model_params = calc_donor_model()
+                    if input.show_Hb():
+                        f, ax = plt.subplots(1)
+                        plot_Hb_ferritin((ax, None), donor_data, model_params, Hb_thres)
+                
+
     ui.input_slider(
         "don_freq",
         "Donation frequency per year",
@@ -263,16 +248,18 @@ with ui.nav_panel("Hb and ferritin prediction"):
         step=1,
         width="100%",
     )
-                    
+
     @render.ui
     def Hb_fer_final():
-        color = 'green'
+        color = "green"
         if fer_final_val.get() < 15:
-            color = 'red'
+            color = "red"
         elif fer_final_val.get() < 30:
-            color = 'orange'
+            color = "orange"
         fer_text = f"Ferritin after {input.ndons()} donations <span style='color:{color}'>**{fer_final_val.get():.0f} ng/mL**</span>"
-        Hb_text = f"Hb after {input.ndons()} donations **{Hb_final_val.get():.1f} mmol/L**"
+        Hb_text = (
+            f"Hb after {input.ndons()} donations **{Hb_final_val.get():.1f} mmol/L**"
+        )
         if input.show_ferritin():
             if input.show_Hb():
                 return ui.markdown(fer_text + "<br>" + Hb_text)
@@ -280,7 +267,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
         else:
             if input.show_Hb():
                 return ui.markdown(Hb_text)
-            return 
+            return
 
     with ui.layout_columns():
         ui.input_numeric(
@@ -289,37 +276,50 @@ with ui.nav_panel("Hb and ferritin prediction"):
         ui.input_numeric(
             "Hb_base", "Hb baseline mmol/L", FEMALE_HB, min=0, step=0.1, max=1000
         )
-        ui.input_checkbox("interp", "Interpolate in-between", False)
-        
-    ui.input_action_button("toggle_button", "Show/Hide Extra inputs"),
-    uis.panel_conditional(
+        ui.input_switch("interp", "Show in-between donations", False)
+
+    @render.text
+    def _():
+        return f"Showing simulated {input.sex()} donor with weight of {input.weight()} kg and height {input.height()} m"
+    
+    ui.input_action_button("toggle_button", "Show/Hide Extra inputs")
+
+
+    with ui.panel_conditional(
         "input.toggle_button % 2 == 1",  # Show when button is clicked an odd number of times
-        uis.layout_columns([
-            ui.input_numeric("ndons", "Number of donations", 5, min=2, max=20, step=1),
-            ui.input_checkbox("uncertainty", "Uncertainty estimate", False),
-            ui.input_radio_buttons("sex", "Sex", {"1": "Female", "2": "Male"}),
+    ):
+        with ui.layout_columns(): 
+            ui.input_numeric(
+                "ndons", "Number of donations", 5, min=2, max=20, step=1
+            )
+            ui.input_switch("uncertainty", "Uncertainty estimate", False),
+            ui.input_radio_buttons(
+                "sex", "Sex", {"Female": "Female", "Male": "Male"}
+            )
             ui.input_numeric(
                 "weight", "Donor weight [kg]", value=FEMALE_WEIGHT, min=0, max=300
-            ),
-            ui.input_numeric(
-                "height", "Donor height [m]", value=FEMALE_HEIGHT, min=1, max=3, step=0.01
             )
-        ])
-    )
-
-
+            ui.input_numeric(
+                "height",
+                "Donor height [m]",
+                value=FEMALE_HEIGHT,
+                min=1,
+                max=3,
+                step=0.01,
+            )
+    
 
 def create_long_term_ferritin_table(years_future=2, sex="Male"):
-    #TODO: set sex to change these values
+    # TODO: set sex to change these values
     if sex == "Male":
-        Hb_base = MALE_HB 
+        Hb_base = MALE_HB
         BW = MALE_WEIGHT
-        V = blood_volume_func(MALE_HEIGHT, BW, 'male')
+        V = blood_volume_func(MALE_HEIGHT, BW, "male")
         model_params = MODEL_PARAMS_MALE
     elif sex == "Female":
-        Hb_base = FEMALE_HB 
+        Hb_base = FEMALE_HB
         BW = FEMALE_WEIGHT
-        V = blood_volume_func(FEMALE_HEIGHT, BW, 'female')
+        V = blood_volume_func(FEMALE_HEIGHT, BW, "female")
         model_params = MODEL_PARAMS_FEMALE
     else:
         raise ValueError(f"sex should be any of Male/Female was {sex}")
@@ -364,6 +364,7 @@ def create_long_term_ferritin_table(years_future=2, sex="Male"):
 
 
 with ui.nav_panel("Donation frequency table"):
+
     @render.ui
     def make_table():
 
@@ -394,12 +395,12 @@ with ui.nav_panel("Donation frequency table"):
             end_fer = start_ferritin
         if end_fer is None:
             end_fer = vals[-1]
-            
-        color = 'green'
+
+        color = "green"
         if end_fer < 15:
-            color = 'red'
+            color = "red"
         elif end_fer < 30:
-            color = 'orange'
+            color = "orange"
         return ui.markdown(
             f"""
             Optimal donation frequency **{optimal_df}** for start ferritin: {start_ferritin} ng/mL.
@@ -410,7 +411,9 @@ with ui.nav_panel("Donation frequency table"):
 
     @render.data_frame
     def table_df():
-        table = create_long_term_ferritin_table(years_future=input.years_future(), sex=input.sex_df())
+        table = create_long_term_ferritin_table(
+            years_future=input.years_future(), sex=input.sex_df()
+        )
 
         values = table.values
         cell_styles = [
@@ -462,15 +465,21 @@ with ui.nav_panel("Donation frequency table"):
     ui.input_numeric(
         "fer_cutoff",
         "Minimum long-term ferritin level (to stay above)",
-        value=30,
+        value=20,
         min=0,
         max=1000,
     )
     ui.input_action_button("toggle_button_df", "Show/Hide Extra inputs"),
     uis.panel_conditional(
         "input.toggle_button_df % 2 == 1",  # Show when button is clicked an odd number of times
-        uis.layout_columns([
-            ui.input_numeric("years_future", "Years into the future", 2, min=1, max=20, step=1),
-            ui.input_radio_buttons("sex_df", "Sex", {"Female": "Female", "Male": "Male"}),
-        ])
+        uis.layout_columns(
+            [
+                ui.input_numeric(
+                    "years_future", "Years into the future", 2, min=1, max=20, step=1
+                ),
+                ui.input_radio_buttons(
+                    "sex_df", "Sex", {"Male": "Male", "Female": "Female"}
+                ),
+            ]
+        ),
     )
