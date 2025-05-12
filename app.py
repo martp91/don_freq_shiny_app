@@ -239,15 +239,15 @@ with ui.nav_panel("Hb and ferritin prediction"):
                         plot_Hb_ferritin((ax, None), donor_data, model_params, Hb_thres)
                 
 
-    ui.input_slider(
-        "don_freq",
-        "Donation frequency per year",
-        min=1,
-        max=5,
-        value=3,
-        step=1,
-        width="100%",
-    )
+        ui.input_slider(
+            "don_freq",
+            "Donation frequency per year",
+            min=1,
+            max=5,
+            value=3,
+            step=1,
+            width="100%",
+        )
 
     @render.ui
     def Hb_fer_final():
