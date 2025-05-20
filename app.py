@@ -51,7 +51,6 @@ FEMALE_HEIGHT = 1.71
 MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
 MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 6.7)
 
-# TODO: ui.tooltip hover info boxes
 
 
 def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
@@ -60,7 +59,6 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
     Hb_final_val.set(Hb[-1])
     fer_final_val.set(fer[-1])
     t = donor_data.don_times
-
     if input.uncertainty():
         donor_data_low = copy(donor_data)
         donor_data_low = donor_data_low._replace(
@@ -183,7 +181,28 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
 
 
 with ui.nav_panel("Hb and ferritin prediction"):
+    
+    @reactive.effect
+    def set_default_sex_height_weight():
+        if input.sex() == "Male":
+            weight_val = MALE_WEIGHT
+            height_val = MALE_HEIGHT
+            fer_val = MALE_FER
+            hb_val = MALE_HB
+            don_freq_val = 5
+        else:
+            weight_val = FEMALE_WEIGHT
+            height_val = FEMALE_HEIGHT
+            fer_val = FEMALE_FER
+            hb_val = FEMALE_HB
+            don_freq_val = 3
 
+        # when changing sex update everything to mean male/female?
+        ui.update_numeric("height", value=height_val)
+        ui.update_numeric("weight", value=weight_val)
+        ui.update_numeric("fer_base", value=fer_val)
+        ui.update_numeric("Hb_base", value=hb_val)
+        ui.update_numeric("don_freq", value=don_freq_val)
 
     Hb_final_val = reactive.value()
     fer_final_val = reactive.value()
@@ -208,8 +227,6 @@ with ui.nav_panel("Hb and ferritin prediction"):
         fer_base = input.fer_base()
         if fer_base is None:
             fer_base = 70
-        # print(input.viewport_width())
-        # TODO set donor data and model params
         BW = input.weight()
         V = blood_volume_func(input.height(), BW, input.sex())
         if input.sex() == "Male":  # males
@@ -280,6 +297,14 @@ with ui.nav_panel("Hb and ferritin prediction"):
             return
 
     with ui.layout_columns():
+        ui.input_radio_buttons(
+            "sex", "Sex", {"Female": "Female", "Male": "Male"}
+        )
+        with ui.tooltip():
+            ui.input_switch("interp", "Show in-between donations", False)
+            "Show the prediction of ferritin/Hb inbetween donations"
+
+    with ui.layout_columns():
         with ui.tooltip():
             ui.input_numeric(
                 "fer_base", "Ferritin baseline (ng/mL)", FEMALE_FER, min=0, max=10000
@@ -290,10 +315,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
                 "Hb_base", "Hb baseline mmol/L", FEMALE_HB, min=0, step=0.1, max=1000
             )
             "The baseline Hb (Hemoglobin) is the Hb of a donor before any donations"
-        with ui.tooltip():
-            ui.input_switch("interp", "Show in-between donations", False)
-            "Show the prediction of ferritin/Hb inbetween donations"
-
+        
     @render.text
     def _():
         return f"Showing simulated {input.sex()} donor with weight of {input.weight()} kg and height {input.height()} m. Donating whole-blood {input.don_freq()} times per year."
@@ -304,25 +326,22 @@ with ui.nav_panel("Hb and ferritin prediction"):
     with ui.panel_conditional(
         "input.toggle_button % 2 == 1",  # Show when button is clicked an odd number of times
     ):
-            with ui.layout_columns(): 
-                ui.input_numeric(
-                    "ndons", "Number of donations", 5, min=2, max=20, step=1
-                )
-                ui.input_switch("uncertainty", "Uncertainty estimate", False),
-                ui.input_radio_buttons(
-                    "sex", "Sex", {"Female": "Female", "Male": "Male"}
-                )
-                ui.input_numeric(
-                    "weight", "Donor weight [kg]", value=FEMALE_WEIGHT, min=0, max=300
-                )
-                ui.input_numeric(
-                    "height",
-                    "Donor height [m]",
-                    value=FEMALE_HEIGHT,
-                    min=1,
-                    max=3,
-                    step=0.01,
-                )
+        with ui.layout_columns(): 
+            ui.input_numeric(
+                "ndons", "Number of donations", 5, min=2, max=20, step=1
+            )
+            ui.input_switch("uncertainty", "Uncertainty estimate", False),
+            ui.input_numeric(
+                "weight", "Donor weight [kg]", value=FEMALE_WEIGHT, min=0, max=300
+            )
+            ui.input_numeric(
+                "height",
+                "Donor height [m]",
+                value=FEMALE_HEIGHT,
+                min=1,
+                max=3,
+                step=0.01,
+            )
     
 
 def create_long_term_ferritin_table(years_future=2, sex="Male"):
