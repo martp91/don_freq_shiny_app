@@ -304,7 +304,6 @@ with ui.nav_panel("Hb and ferritin prediction"):
             ui.input_switch("interp", "Show in-between donations", False)
             "Show the prediction of ferritin/Hb inbetween donations"
 
-    with ui.layout_columns():
         with ui.tooltip():
             ui.input_numeric(
                 "fer_base", "Ferritin baseline (ng/mL)", FEMALE_FER, min=0, max=10000
@@ -315,21 +314,21 @@ with ui.nav_panel("Hb and ferritin prediction"):
                 "Hb_base", "Hb baseline mmol/L", FEMALE_HB, min=0, step=0.1, max=1000
             )
             "The baseline Hb (Hemoglobin) is the Hb of a donor before any donations"
+        ui.input_numeric(
+            "ndons", "Number of donations", 5, min=2, max=20, step=1
+        )
+        ui.input_action_button("toggle_button", "Show/Hide Extra inputs")
         
     @render.text
     def _():
         return f"Showing simulated {input.sex()} donor with weight of {input.weight()} kg and height {input.height()} m. Donating whole-blood {input.don_freq()} times per year."
     
-    ui.input_action_button("toggle_button", "Show/Hide Extra inputs")
 
 
     with ui.panel_conditional(
         "input.toggle_button % 2 == 1",  # Show when button is clicked an odd number of times
     ):
         with ui.layout_columns(): 
-            ui.input_numeric(
-                "ndons", "Number of donations", 5, min=2, max=20, step=1
-            )
             ui.input_switch("uncertainty", "Uncertainty estimate", False),
             ui.input_numeric(
                 "weight", "Donor weight [kg]", value=FEMALE_WEIGHT, min=0, max=300
