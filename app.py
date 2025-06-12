@@ -47,10 +47,13 @@ FEMALE_WEIGHT = 73
 MALE_HEIGHT = 1.85
 FEMALE_HEIGHT = 1.71
 
-# TODO: Set male/female best params
-MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
-MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 6.7)
 
+MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
+MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 7.0)
+MODEL_PARAMS_AVE = ModelParams(1/16, 1/208, 1.05, 1.67, -0.28, 3.19, 6.85)
+
+AVE_WEIGHT = 79
+AVE_HEIGHT = 1.78
 
 
 def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
@@ -356,7 +359,10 @@ def create_long_term_ferritin_table(years_future=2, sex="Male"):
         V = blood_volume_func(FEMALE_HEIGHT, BW, "female")
         model_params = MODEL_PARAMS_FEMALE
     else:
-        raise ValueError(f"sex should be any of Male/Female was {sex}")
+        Hb_base = (MALE_HB + FEMALE_HB)/2
+        BW = AVE_WEIGHT
+        V = (blood_volume_func(AVE_HEIGHT, BW, 'male') + blood_volume_func(AVE_HEIGHT, BW, 'female'))/2
+        model_params = MODEL_PARAMS_AVE
 
     fer_bases = [
         20,
@@ -373,7 +379,9 @@ def create_long_term_ferritin_table(years_future=2, sex="Male"):
         150,
         175,
         200,
+        250,
         300,
+        350,
         400,
         500,
     ]
@@ -418,7 +426,7 @@ with ui.nav_panel("Donation frequency table"):
         optimal_df = dfs.max()
         end_fer = None
         for i, val in enumerate(vals):
-            if val < input.fer_cutoff():
+            if val <= input.fer_cutoff():
                 if i == 0:
                     optimal_df = "0/year"
                 else:
@@ -512,7 +520,7 @@ with ui.nav_panel("Donation frequency table"):
                     "years_future", "Years into the future", 2, min=1, max=20, step=1
                 ),
                 ui.input_radio_buttons(
-                    "sex_df", "Sex", {"Male": "Male", "Female": "Female"}
+                    "sex_df", "Sex", {"Male": "Male", "Female": "Female", 'Average': 'Average'}
                 ),
             ]
         ),
