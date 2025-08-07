@@ -50,7 +50,7 @@ FEMALE_HEIGHT = 1.71
 
 MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
 MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 7.0)
-MODEL_PARAMS_AVE = ModelParams(1/16, 1/208, 1.05, 1.67, -0.28, 3.19, 6.85)
+MODEL_PARAMS_AVE = ModelParams(1/16, 1/208, 1.05, 1.17, -0.28, 3.19, 6.85)
 
 AVE_WEIGHT = 79
 AVE_HEIGHT = 1.78
@@ -346,24 +346,19 @@ with ui.nav_panel("Hb and ferritin prediction"):
             )
     
 
-def create_long_term_ferritin_table(years_future=2, sex="Male"):
-    # TODO: set sex to change these values
-    if sex == "Male":
-        Hb_base = MALE_HB
-        BW = MALE_WEIGHT
-        V = blood_volume_func(MALE_HEIGHT, BW, "male")
-        model_params = MODEL_PARAMS_MALE
-    elif sex == "Female":
-        Hb_base = FEMALE_HB
-        BW = FEMALE_WEIGHT
-        V = blood_volume_func(FEMALE_HEIGHT, BW, "female")
-        model_params = MODEL_PARAMS_FEMALE
-    else:
-        Hb_base = (MALE_HB + FEMALE_HB)/2
-        BW = AVE_WEIGHT
-        V = (blood_volume_func(AVE_HEIGHT, BW, 'male') + blood_volume_func(AVE_HEIGHT, BW, 'female'))/2
-        model_params = MODEL_PARAMS_AVE
-
+def create_long_term_ferritin_table(years_future=2, sex='ave', Hb_base=None,
+                                    BW=None, H=None, alpha=None, beta=None,
+                                    gamma=None, kappa=None, iron_A=None, iron_B=None, iron_C=None):
+    
+    if sex == 'Male': 
+        V = blood_volume_func(H, BW, 'male')
+    elif sex == 'Female':
+        V = blood_volume_func(H, BW, 'female')
+    else: 
+        V = (blood_volume_func(H, BW, 'female') + blood_volume_func(H, BW, 'male'))/2.
+    #take inverse of alpha,beta. The naming is shit sorry 
+    model_params = ModelParams(1/alpha, 1/beta, gamma, kappa, iron_A, iron_B, iron_C)
+        
     fer_bases = [
         20,
         25,
@@ -401,11 +396,61 @@ def create_long_term_ferritin_table(years_future=2, sex="Male"):
     df = pd.DataFrame({"Start ferritin": fer_bases})
     for i, don_freq in enumerate(don_freqs):
         df[f"{don_freq}/year"] = output[:, i]
-
     return df
 
 
 with ui.nav_panel("Donation frequency table"):
+    
+    @reactive.effect
+    def set_default_sex_height_weight_df():
+        if input.sex_df() == "Male":
+            weight_val = MALE_WEIGHT
+            height_val = MALE_HEIGHT
+            hb_val = MALE_HB
+            V_val = blood_volume_func(height_val, weight_val, 'male')
+            alpha_val = MODEL_PARAMS_MALE.alpha
+            beta_val = MODEL_PARAMS_MALE.beta
+            gamma_val = MODEL_PARAMS_MALE.gamma
+            kappa_val = MODEL_PARAMS_MALE.kappa
+            iron_A_val = MODEL_PARAMS_MALE.iron_a
+            iron_B_val = MODEL_PARAMS_MALE.iron_b
+            iron_C_val = MODEL_PARAMS_MALE.iron_c
+        elif input.sex_df() == 'Female':
+            weight_val = FEMALE_WEIGHT
+            height_val = FEMALE_HEIGHT
+            hb_val = FEMALE_HB
+            alpha_val = MODEL_PARAMS_FEMALE.alpha
+            beta_val = MODEL_PARAMS_FEMALE.beta
+            gamma_val = MODEL_PARAMS_FEMALE.gamma
+            kappa_val = MODEL_PARAMS_FEMALE.kappa
+            iron_A_val = MODEL_PARAMS_FEMALE.iron_a
+            iron_B_val = MODEL_PARAMS_FEMALE.iron_b
+            iron_C_val = MODEL_PARAMS_FEMALE.iron_c
+            V_val = blood_volume_func(height_val, weight_val, 'female')
+        else:
+            weight_val = AVE_WEIGHT
+            height_val = AVE_HEIGHT
+            hb_val = (FEMALE_HB+MALE_HB)/2.
+            alpha_val = MODEL_PARAMS_AVE.alpha
+            beta_val = MODEL_PARAMS_AVE.beta
+            gamma_val = MODEL_PARAMS_AVE.gamma
+            kappa_val = MODEL_PARAMS_AVE.kappa
+            iron_A_val = MODEL_PARAMS_AVE.iron_a
+            iron_B_val = MODEL_PARAMS_AVE.iron_b
+            iron_C_val = MODEL_PARAMS_AVE.iron_c
+            
+
+        # when changing sex update everything to mean male/female?
+        ui.update_slider("H", value=height_val)
+        ui.update_slider("BW", value=weight_val)
+        ui.update_slider("Hb_base_df", value=hb_val)
+        ui.update_slider("alpha", value=1/alpha_val)
+        ui.update_slider("beta", value=1/beta_val)
+        ui.update_slider("gamma", value=gamma_val)
+        ui.update_slider("kappa", value=kappa_val)
+        ui.update_slider("iron_A", value=iron_A_val)
+        ui.update_slider("iron_B", value=iron_B_val)
+        ui.update_slider("iron_C", value=iron_C_val)
 
     @render.ui
     def make_table():
@@ -454,9 +499,14 @@ with ui.nav_panel("Donation frequency table"):
     @render.data_frame
     def table_df():
         table = create_long_term_ferritin_table(
-            years_future=input.years_future(), sex=input.sex_df()
+            years_future=input.years_future(),
+            Hb_base=input.Hb_base_df(), BW=input.BW(), H=input.H(),
+            alpha=input.alpha(), beta=input.beta(), gamma=input.gamma(),
+            kappa=input.kappa(),
+            iron_A=input.iron_A(),  
+            iron_B=input.iron_B(),  
+            iron_C=input.iron_C(),  
         )
-
         values = table.values
         cell_styles = [
             {
@@ -512,16 +562,19 @@ with ui.nav_panel("Donation frequency table"):
         max=1000,
     )
     ui.input_action_button("toggle_button_df", "Show/Hide Extra inputs"),
-    uis.panel_conditional(
-        "input.toggle_button_df % 2 == 1",  # Show when button is clicked an odd number of times
-        uis.layout_columns(
-            [
-                ui.input_numeric(
-                    "years_future", "Years into the future", 2, min=1, max=20, step=1
-                ),
-                ui.input_radio_buttons(
-                    "sex_df", "Sex", {"Male": "Male", "Female": "Female", 'Average': 'Average'}
-                ),
-            ]
-        ),
-    )
+    with ui.panel_conditional("input.toggle_button_df % 2 == 1"):
+        with ui.layout_columns(): 
+            ui.input_numeric("years_future", "Years into the future", 2, min=1, max=20, step=1)
+            ui.input_radio_buttons(
+                "sex_df", "Sex", {"Male": "Male", "Female": "Female", 'Average': 'Average'}
+            )
+            ui.input_slider('BW', 'Weight', value=None, min=50, max=150, step=1)
+            ui.input_slider('H', 'Height', value=None, min=1.5, max=2.5, step=0.01)
+            ui.input_slider('Hb_base_df', 'Hb_base', value=None, min=6, max=13, step=0.1)
+            ui.input_slider('alpha', '1/alpha', value=None, min=1, max=100, step=1)
+            ui.input_slider('beta', '1/beta', value=None, min=50, max=1000, step=1)
+            ui.input_slider('gamma', 'gamma', value=None, min=0.5, max=2, step=0.1)
+            ui.input_slider('kappa', 'kappa', value=None, min=0.5, max=3, step=0.1)
+            ui.input_slider('iron_A', 'iron_A', value=None, min=-0.4, max=-0.01, step=0.01)
+            ui.input_slider('iron_B', 'iron_B', value=None, min=2, max=4, step=0.1)
+            ui.input_slider('iron_C', 'iron_C', value=None, min=5, max=9, step=0.1)                
