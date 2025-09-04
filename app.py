@@ -48,9 +48,12 @@ MALE_HEIGHT = 1.85
 FEMALE_HEIGHT = 1.71
 
 
-MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
-MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 7.0)
-MODEL_PARAMS_AVE = ModelParams(1/16, 1/208, 1.05, 1.17, -0.28, 3.19, 6.85)
+# MODEL_PARAMS_MALE = ModelParams(1 / 13, 1 / 265, 0.78, 1.27, -0.28, 3.19, 6.7)
+MODEL_PARAMS_MALE = ModelParams(1 / 10, 1 / 276, 0.8, 1.86, -0.28, 3.19, 6.7)
+# MODEL_PARAMS_FEMALE = ModelParams(1 / 18, 1 / 196, 1.21, 1.07, -0.28, 3.19, 7.0)
+MODEL_PARAMS_FEMALE = ModelParams(1 / 22, 1 / 172, 1.36, 1.67, -0.28, 3.19, 7.0)
+# MODEL_PARAMS_AVE = ModelParams(1/16, 1/208, 1.05, 1.17, -0.28, 3.19, 6.85)
+MODEL_PARAMS_AVE = ModelParams(1/15, 1/218, 1.04, 1.77, -0.28, 3.19, 6.85)
 
 AVE_WEIGHT = 79
 AVE_HEIGHT = 1.78
