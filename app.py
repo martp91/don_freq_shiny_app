@@ -149,7 +149,6 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
     if ax1 is not None:
         hb_color = "#1f77b4"
         hb_warn_color = "#c62828"
-        hb_band_color = "#90caf9"
         hb_threshold = float(Hb_thres.get())
 
         # Apply a consistent, cleaner axis style.
@@ -174,12 +173,22 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             )
             ax1.add_collection(hb_collection)
             if input.uncertainty():
+                mask_hb_interp_warn = Hb_interp < hb_threshold
+                mask_hb_interp_ok = ~mask_hb_interp_warn
                 ax1.fill_between(
                     t_interp,
-                    Hb_low_interp,
-                    Hb_high_interp,
-                    color=hb_band_color,
-                    alpha=0.35,
+                    np.where(mask_hb_interp_ok, Hb_low_interp, np.nan),
+                    np.where(mask_hb_interp_ok, Hb_high_interp, np.nan),
+                    color=hb_color,
+                    alpha=0.2,
+                    zorder=0,
+                )
+                ax1.fill_between(
+                    t_interp,
+                    np.where(mask_hb_interp_warn, Hb_low_interp, np.nan),
+                    np.where(mask_hb_interp_warn, Hb_high_interp, np.nan),
+                    color=hb_warn_color,
+                    alpha=0.2,
                     zorder=0,
                 )
 
@@ -254,7 +263,6 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         fer_color = "#2e7d32"
         fer_warn_30 = "#ef6c00"
         fer_warn_15 = "#c62828"
-        fer_band_color = "#a5d6a7"
 
         ax2.set_facecolor("#fbfffb")
         ax2.grid(axis="y", color="#d9e2ec", lw=0.8, alpha=0.7)
@@ -295,10 +303,26 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             if input.uncertainty():
                 ax2.fill_between(
                     t_interp,
-                    fer_low_interp,
-                    fer_high_interp,
-                    color=fer_band_color,
-                    alpha=0.35,
+                    np.where(mask_fer_ok, fer_low_interp, np.nan),
+                    np.where(mask_fer_ok, fer_high_interp, np.nan),
+                    color=fer_color,
+                    alpha=0.2,
+                    zorder=0,
+                )
+                ax2.fill_between(
+                    t_interp,
+                    np.where(mask_fer_warn_30, fer_low_interp, np.nan),
+                    np.where(mask_fer_warn_30, fer_high_interp, np.nan),
+                    color=fer_warn_30,
+                    alpha=0.2,
+                    zorder=0,
+                )
+                ax2.fill_between(
+                    t_interp,
+                    np.where(mask_fer_warn_15, fer_low_interp, np.nan),
+                    np.where(mask_fer_warn_15, fer_high_interp, np.nan),
+                    color=fer_warn_15,
+                    alpha=0.2,
                     zorder=0,
                 )
 
