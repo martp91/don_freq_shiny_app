@@ -1,6 +1,7 @@
 from collections import namedtuple
 from copy import copy
 import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 import numpy as np
 import pandas as pd
 
@@ -160,24 +161,18 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         ax1.axhspan(Hb.min() * 0.9, hb_threshold, color="#fdecea", alpha=0.45, zorder=0)
 
         if input.interp():
-            mask_hb_ok = Hb_interp >= hb_threshold
-            mask_hb_warn = Hb_interp < hb_threshold
-            ax1.plot(
-                t_interp,
-                np.where(mask_hb_ok, Hb_interp, np.nan),
-                color=hb_color,
-                lw=2.0,
+            points = np.array([t_interp, Hb_interp]).T.reshape(-1, 1, 2)
+            segments = np.concatenate([points[:-1], points[1:]], axis=1)
+            segment_mid = (Hb_interp[:-1] + Hb_interp[1:]) / 2
+            segment_colors = np.where(segment_mid < hb_threshold, hb_warn_color, hb_color)
+            hb_collection = LineCollection(
+                segments,
+                colors=segment_colors,
+                linewidths=2.0,
                 alpha=0.9,
                 zorder=1,
             )
-            ax1.plot(
-                t_interp,
-                np.where(mask_hb_warn, Hb_interp, np.nan),
-                color=hb_warn_color,
-                lw=2.0,
-                alpha=0.9,
-                zorder=1,
-            )
+            ax1.add_collection(hb_collection)
             if input.uncertainty():
                 ax1.fill_between(
                     t_interp,
@@ -187,8 +182,6 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
                     alpha=0.35,
                     zorder=0,
                 )
-
-        ax1.plot(t, Hb, color=hb_color, lw=1.6, alpha=0.8, zorder=2)
 
         ax1.plot(
             t,
@@ -222,8 +215,36 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         )
         ax1.axhline(hb_threshold, ls="--", lw=1.2, color=hb_warn_color, alpha=0.9)
         if input.uncertainty():
-            ax1.plot(t, Hb_low, "_", color="#607d8b", alpha=0.8)
-            ax1.plot(t, Hb_high, "_", color="#607d8b", alpha=0.8)
+            mask_hb_low_warn = Hb_low < hb_threshold
+            mask_hb_high_warn = Hb_high < hb_threshold
+            ax1.plot(
+                t[~mask_hb_low_warn],
+                Hb_low[~mask_hb_low_warn],
+                "_",
+                color=hb_color,
+                alpha=0.8,
+            )
+            ax1.plot(
+                t[mask_hb_low_warn],
+                Hb_low[mask_hb_low_warn],
+                "_",
+                color=hb_warn_color,
+                alpha=0.9,
+            )
+            ax1.plot(
+                t[~mask_hb_high_warn],
+                Hb_high[~mask_hb_high_warn],
+                "_",
+                color=hb_color,
+                alpha=0.8,
+            )
+            ax1.plot(
+                t[mask_hb_high_warn],
+                Hb_high[mask_hb_high_warn],
+                "_",
+                color=hb_warn_color,
+                alpha=0.9,
+            )
 
         ax1.spines["left"].set_color("#9aa5b1")
         ax1.spines["bottom"].set_color("#9aa5b1")
@@ -281,8 +302,6 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
                     zorder=0,
                 )
 
-        ax2.plot(t, fer, color=fer_color, lw=1.6, alpha=0.8, zorder=2)
-
         ax2.plot(
             t,
             fer,
@@ -332,8 +351,44 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         ax2.axhline(30, ls="--", lw=1.1, color=fer_warn_30, alpha=0.95)
         ax2.axhline(15, ls="--", lw=1.1, color=fer_warn_15, alpha=0.95)
         if input.uncertainty():
-            ax2.plot(t, fer_low, "_", color="#558b2f", alpha=0.8)
-            ax2.plot(t, fer_high, "_", color="#558b2f", alpha=0.8)
+            mask_fer_low_ok = fer_low >= 30
+            mask_fer_low_warn_30 = (fer_low < 30) & (fer_low >= 15)
+            mask_fer_low_warn_15 = fer_low < 15
+            mask_fer_high_ok = fer_high >= 30
+            mask_fer_high_warn_30 = (fer_high < 30) & (fer_high >= 15)
+            mask_fer_high_warn_15 = fer_high < 15
+
+            ax2.plot(t[mask_fer_low_ok], fer_low[mask_fer_low_ok], "_", color=fer_color, alpha=0.8)
+            ax2.plot(
+                t[mask_fer_low_warn_30],
+                fer_low[mask_fer_low_warn_30],
+                "_",
+                color=fer_warn_30,
+                alpha=0.9,
+            )
+            ax2.plot(
+                t[mask_fer_low_warn_15],
+                fer_low[mask_fer_low_warn_15],
+                "_",
+                color=fer_warn_15,
+                alpha=0.95,
+            )
+
+            ax2.plot(t[mask_fer_high_ok], fer_high[mask_fer_high_ok], "_", color=fer_color, alpha=0.8)
+            ax2.plot(
+                t[mask_fer_high_warn_30],
+                fer_high[mask_fer_high_warn_30],
+                "_",
+                color=fer_warn_30,
+                alpha=0.9,
+            )
+            ax2.plot(
+                t[mask_fer_high_warn_15],
+                fer_high[mask_fer_high_warn_15],
+                "_",
+                color=fer_warn_15,
+                alpha=0.95,
+            )
 
         ax2.spines["left"].set_color("#9aa5b1")
         ax2.spines["bottom"].set_color("#9aa5b1")
