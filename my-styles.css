@@ -1,3 +1,7 @@
+/* Custom CSS for the Shiny app
+ Makes sure that the plot output adapts to the screen,
+ but to a max
+ */
 @media (max-width: 500px) {
     .shiny-plot-output {
         width: 100% !important;

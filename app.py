@@ -1,14 +1,10 @@
 from collections import namedtuple
 from copy import copy
-from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 import matplotlib as mpl
-
-mpl.rcParams["axes.spines.right"] = False
-mpl.rcParams["axes.spines.top"] = False
 
 from shiny import render, reactive
 from shiny.express import input
@@ -16,6 +12,9 @@ from shiny.express import ui  # as ui
 from shiny import ui as uis
 
 from model import Hb_fer_model_iron, blood_volume_func
+
+mpl.rcParams["axes.spines.right"] = False
+mpl.rcParams["axes.spines.top"] = False
 
 
 # https://icons.getbootstrap.com/icons/question-circle-fill/
@@ -35,6 +34,15 @@ ModelParams = namedtuple(
 
 
 def model(donor_data, model_params):
+    """Run the Hb/ferritin simulation for a donor configuration.
+
+    Args:
+        donor_data: DonorData tuple with timeline and baseline donor values.
+        model_params: ModelParams tuple with dynamic model coefficients.
+
+    Returns:
+        Tuple of arrays ``(Hb, ferritin)`` at donation time points.
+    """
     return Hb_fer_model_iron(*donor_data, *model_params)
 
 
@@ -60,6 +68,17 @@ AVE_HEIGHT = 1.78
 
 
 def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
+    """Render Hb and ferritin trajectories with optional uncertainty bands.
+
+    Args:
+        axs: Tuple ``(ax_hb, ax_ferritin)`` where either entry may be ``None``.
+        donor_data: DonorData used for the model simulation.
+        model_params: Model parameters for the simulation.
+        Hb_thres: Reactive value that stores the Hb threshold.
+
+    Returns:
+        Updated matplotlib axis object(s) that were plotted.
+    """
     ax1, ax2 = axs
     Hb, fer = model(donor_data, model_params)
     Hb_final_val.set(Hb[-1])
@@ -127,37 +146,135 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             Hb_high_interp, fer_high_interp = model(donor_data_high, model_params_high)
 
     if ax1 is not None:
+        hb_color = "#1f77b4"
+        hb_warn_color = "#c62828"
+        hb_band_color = "#90caf9"
+        hb_threshold = float(Hb_thres.get())
 
-        ax1.plot(t, Hb, "ko", label="donation")
-        mask_Hb_thres = Hb < float(Hb_thres.get())
-        ax1.plot(t[mask_Hb_thres], Hb[mask_Hb_thres], ls="", color="red", marker="o")
-        ax1.plot(t[0], Hb[0], "ko", mfc="white", label="intake")
+        # Apply a consistent, cleaner axis style.
+        ax1.set_facecolor("#fbfdff")
+        ax1.grid(axis="y", color="#d9e2ec", lw=0.8, alpha=0.7)
+        ax1.grid(axis="x", color="#edf2f7", lw=0.6, alpha=0.45)
+
+        # Lightly shade values below threshold to improve risk visibility.
+        ax1.axhspan(Hb.min() * 0.9, hb_threshold, color="#fdecea", alpha=0.45, zorder=0)
+
+        if input.interp():
+            ax1.plot(t_interp, Hb_interp, color=hb_color, lw=2.0, alpha=0.9, zorder=1)
+            if input.uncertainty():
+                ax1.fill_between(
+                    t_interp,
+                    Hb_low_interp,
+                    Hb_high_interp,
+                    color=hb_band_color,
+                    alpha=0.35,
+                    zorder=0,
+                )
+
+        ax1.plot(
+            t,
+            Hb,
+            ls="",
+            marker="o",
+            ms=5,
+            color=hb_color,
+            mec="white",
+            mew=0.6,
+            label="donation",
+            zorder=3,
+        )
+        mask_Hb_thres = Hb < hb_threshold
+        ax1.plot(
+            t[mask_Hb_thres],
+            Hb[mask_Hb_thres],
+            ls="",
+            marker="o",
+            ms=6,
+            color=hb_warn_color,
+            mec="white",
+            mew=0.5,
+            zorder=4,
+        )
+        ax1.plot(t[0], Hb[0], marker="o", ms=7, mfc="white", mec=hb_color, mew=1.2, ls="", zorder=5)
         ax1.set(
             xlabel="days since first donation",
             ylabel="Hb [mmol/L]",
             ylim=[Hb.min() * 0.9, Hb.max() + 0.5],
         )
-        ax1.axhline(float(Hb_thres.get()), ls=":", color="r")
+        ax1.axhline(hb_threshold, ls="--", lw=1.2, color=hb_warn_color, alpha=0.9)
         if input.uncertainty():
-            ax1.plot(t, Hb_low, "_", color="grey")
-            ax1.plot(t, Hb_high, "_", color="grey")
-        if input.interp():
-            ax1.plot(t_interp, Hb_interp, "k-", alpha=0.4, zorder=0)
-            if input.uncertainty():
-                ax1.fill_between(
-                    t_interp, Hb_low_interp, Hb_high_interp, color="grey", alpha=0.3
-                )
+            ax1.plot(t, Hb_low, "_", color="#607d8b", alpha=0.8)
+            ax1.plot(t, Hb_high, "_", color="#607d8b", alpha=0.8)
+
+        ax1.spines["left"].set_color("#9aa5b1")
+        ax1.spines["bottom"].set_color("#9aa5b1")
+        ax1.tick_params(colors="#334e68")
 
     if ax2 is not None:
-        ax2.plot(t, fer, "ko")
+        fer_color = "#2e7d32"
+        fer_warn_30 = "#ef6c00"
+        fer_warn_15 = "#c62828"
+        fer_band_color = "#a5d6a7"
+
+        ax2.set_facecolor("#fbfffb")
+        ax2.grid(axis="y", color="#d9e2ec", lw=0.8, alpha=0.7)
+        ax2.grid(axis="x", color="#edf2f7", lw=0.6, alpha=0.45)
+
+        # Ferritin risk zones for quick interpretation.
+        ax2.axhspan(0, 15, color="#ffebee", alpha=0.55, zorder=0)
+        ax2.axhspan(15, 30, color="#fff3e0", alpha=0.55, zorder=0)
+
+        if input.interp():
+            ax2.plot(t_interp, fer_interp, color=fer_color, lw=2.0, alpha=0.9, zorder=1)
+            if input.uncertainty():
+                ax2.fill_between(
+                    t_interp,
+                    fer_low_interp,
+                    fer_high_interp,
+                    color=fer_band_color,
+                    alpha=0.35,
+                    zorder=0,
+                )
+
+        ax2.plot(
+            t,
+            fer,
+            ls="",
+            marker="o",
+            ms=5,
+            color=fer_color,
+            mec="white",
+            mew=0.6,
+            zorder=3,
+        )
 
         mask_fer_30 = fer < 30
         mask_fer_15 = fer < 15
 
-        ax2.plot(t[mask_fer_30], fer[mask_fer_30], ls="", color="orange", marker="o")
-        ax2.plot(t[mask_fer_15], fer[mask_fer_15], ls="", color="red", marker="o")
+        ax2.plot(
+            t[mask_fer_30],
+            fer[mask_fer_30],
+            ls="",
+            marker="o",
+            ms=6,
+            color=fer_warn_30,
+            mec="white",
+            mew=0.5,
+            zorder=4,
+        )
+        ax2.plot(
+            t[mask_fer_15],
+            fer[mask_fer_15],
+            ls="",
+            marker="o",
+            ms=6,
+            color=fer_warn_15,
+            mec="white",
+            mew=0.5,
+            zorder=5,
+        )
 
-        ax2.plot(t[0], fer[0], "ko", mfc="white")
+        ax2.plot(t[0], fer[0], marker="o", ms=7, mfc="white", mec=fer_color, mew=1.2, ls="", zorder=6)
 
         ax2.set(
             xlabel="days since first donation",
@@ -165,17 +282,15 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             ylim=[fer.min() * 0.5, 10 ** (np.log10(fer.max()) + 0.11)],
         )
 
-        ax2.axhline(30, ls=":", color="orange")
-        ax2.axhline(15, ls=":", color="red")
+        ax2.axhline(30, ls="--", lw=1.1, color=fer_warn_30, alpha=0.95)
+        ax2.axhline(15, ls="--", lw=1.1, color=fer_warn_15, alpha=0.95)
         if input.uncertainty():
-            ax2.plot(t, fer_low, "_", color="grey")
-            ax2.plot(t, fer_high, "_", color="grey")
-        if input.interp():
-            ax2.plot(t_interp, fer_interp, "k-", alpha=0.4, zorder=0)
-            if input.uncertainty():
-                ax2.fill_between(
-                    t_interp, fer_low_interp, fer_high_interp, color="grey", alpha=0.3
-                )
+            ax2.plot(t, fer_low, "_", color="#558b2f", alpha=0.8)
+            ax2.plot(t, fer_high, "_", color="#558b2f", alpha=0.8)
+
+        ax2.spines["left"].set_color("#9aa5b1")
+        ax2.spines["bottom"].set_color("#9aa5b1")
+        ax2.tick_params(colors="#334e68")
                 
     if ax1 is None:
         return ax2
@@ -190,6 +305,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
     
     @reactive.effect
     def set_default_sex_height_weight():
+        """Sync default anthropometrics and baselines when sex changes."""
         if input.sex() == "Male":
             weight_val = MALE_WEIGHT
             height_val = MALE_HEIGHT
@@ -221,6 +337,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
 
     @reactive.calc
     def calc_donor_model():
+        """Build donor state and model parameters from UI input values."""
         don_freq = input.don_freq()
         dt = int(365 / don_freq)
         t_end = input.ndons() * dt
@@ -259,15 +376,17 @@ with ui.nav_panel("Hb and ferritin prediction"):
                 #TODO: make sure these are not recalculated?
                 @render.plot
                 def plot_fer():  # Match the unique ID here
+                    """Render the ferritin-only trajectory panel."""
                     donor_data, model_params = calc_donor_model()
-                    f, ax = plt.subplots(1)
+                    _, ax = plt.subplots(1)
                     plot_Hb_ferritin((None, ax), donor_data, model_params, Hb_thres)
 
             with ui.panel_conditional("input.show_ferritin_Hb.includes('Hb')"):
                 @render.plot
                 def plot_Hb():  # Match the unique ID here
+                    """Render the Hb-only trajectory panel."""
                     donor_data, model_params = calc_donor_model()
-                    f, ax = plt.subplots(1)
+                    _, ax = plt.subplots(1)
                     plot_Hb_ferritin((ax, None), donor_data, model_params, Hb_thres)
                 
         with ui.tooltip():
@@ -284,6 +403,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
 
     @render.ui
     def Hb_fer_final():
+        """Display summary text for final Hb and ferritin values."""
         color = "green"
         if fer_final_val.get() < 15:
             color = "red"
@@ -327,6 +447,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
         
     @render.text
     def _():
+        """Show a one-line description of the simulated donor profile."""
         return f"Showing simulated {input.sex()} donor with weight of {input.weight()} kg and height {input.height()} m. Donating whole-blood {input.don_freq()} times per year."
     
 
@@ -352,6 +473,26 @@ with ui.nav_panel("Hb and ferritin prediction"):
 def create_long_term_ferritin_table(years_future=2, sex='ave', Hb_base=None,
                                     BW=None, H=None, alpha=None, beta=None,
                                     gamma=None, kappa=None, iron_A=None, iron_B=None, iron_C=None):
+    """Create a lookup table of end ferritin by start ferritin and donation rate.
+
+    Args:
+        years_future: Forecast horizon in years.
+        sex: "Male", "Female", or an averaged profile for other values.
+        Hb_base: Baseline hemoglobin value.
+        BW: Body weight in kilograms.
+        H: Height in meters.
+        alpha: Inverse Hb recovery timescale from UI slider (``1/alpha``).
+        beta: Inverse ferritin recovery timescale from UI slider (``1/beta``).
+        gamma: Hb-iron coupling coefficient.
+        kappa: Ferritin sensitivity coefficient for Hb recovery.
+        iron_A: Quadratic ferritin-to-iron parameter.
+        iron_B: Linear ferritin-to-iron parameter.
+        iron_C: Intercept ferritin-to-iron parameter.
+
+    Returns:
+        DataFrame with start ferritin values and projected end ferritin for
+        donation frequencies from 1 to 5 per year.
+    """
     
     if sex == 'Male': 
         V = blood_volume_func(H, BW, 'male')
@@ -406,11 +547,11 @@ with ui.nav_panel("Donation frequency table"):
     
     @reactive.effect
     def set_default_sex_height_weight_df():
+        """Set table defaults from selected sex-specific parameter profile."""
         if input.sex_df() == "Male":
             weight_val = MALE_WEIGHT
             height_val = MALE_HEIGHT
             hb_val = MALE_HB
-            V_val = blood_volume_func(height_val, weight_val, 'male')
             alpha_val = MODEL_PARAMS_MALE.alpha
             beta_val = MODEL_PARAMS_MALE.beta
             gamma_val = MODEL_PARAMS_MALE.gamma
@@ -429,7 +570,6 @@ with ui.nav_panel("Donation frequency table"):
             iron_A_val = MODEL_PARAMS_FEMALE.iron_a
             iron_B_val = MODEL_PARAMS_FEMALE.iron_b
             iron_C_val = MODEL_PARAMS_FEMALE.iron_c
-            V_val = blood_volume_func(height_val, weight_val, 'female')
         else:
             weight_val = AVE_WEIGHT
             height_val = AVE_HEIGHT
@@ -457,6 +597,7 @@ with ui.nav_panel("Donation frequency table"):
 
     @render.ui
     def make_table():
+        """Render helper text above the donation-frequency results table."""
 
         return ui.markdown(
             "Click **Start ferritin** in the table below to get optimal donation frequency."
@@ -464,6 +605,7 @@ with ui.nav_panel("Donation frequency table"):
 
     @render.ui
     def rows():
+        """Describe optimal donation frequency for the selected table row."""
         rows = table_df.cell_selection().get("rows", [])
         row = table_df.data().iloc[rows]
         start_ferritin = row["Start ferritin"]
@@ -501,6 +643,7 @@ with ui.nav_panel("Donation frequency table"):
 
     @render.data_frame
     def table_df():
+        """Render long-term ferritin projection table with risk color coding."""
         table = create_long_term_ferritin_table(
             years_future=input.years_future(),
             Hb_base=input.Hb_base_df(), BW=input.BW(), H=input.H(),
