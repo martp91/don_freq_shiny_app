@@ -160,7 +160,24 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         ax1.axhspan(Hb.min() * 0.9, hb_threshold, color="#fdecea", alpha=0.45, zorder=0)
 
         if input.interp():
-            ax1.plot(t_interp, Hb_interp, color=hb_color, lw=2.0, alpha=0.9, zorder=1)
+            mask_hb_ok = Hb_interp >= hb_threshold
+            mask_hb_warn = Hb_interp < hb_threshold
+            ax1.plot(
+                t_interp,
+                np.where(mask_hb_ok, Hb_interp, np.nan),
+                color=hb_color,
+                lw=2.0,
+                alpha=0.9,
+                zorder=1,
+            )
+            ax1.plot(
+                t_interp,
+                np.where(mask_hb_warn, Hb_interp, np.nan),
+                color=hb_warn_color,
+                lw=2.0,
+                alpha=0.9,
+                zorder=1,
+            )
             if input.uncertainty():
                 ax1.fill_between(
                     t_interp,
@@ -171,12 +188,14 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
                     zorder=0,
                 )
 
+        ax1.plot(t, Hb, color=hb_color, lw=1.6, alpha=0.8, zorder=2)
+
         ax1.plot(
             t,
             Hb,
             ls="",
             marker="o",
-            ms=5,
+            ms=7,
             color=hb_color,
             mec="white",
             mew=0.6,
@@ -189,13 +208,13 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             Hb[mask_Hb_thres],
             ls="",
             marker="o",
-            ms=6,
+            ms=8,
             color=hb_warn_color,
             mec="white",
             mew=0.5,
             zorder=4,
         )
-        ax1.plot(t[0], Hb[0], marker="o", ms=7, mfc="white", mec=hb_color, mew=1.2, ls="", zorder=5)
+        ax1.plot(t[0], Hb[0], marker="o", ms=9, mfc="white", mec=hb_color, mew=1.2, ls="", zorder=5)
         ax1.set(
             xlabel="days since first donation",
             ylabel="Hb [mmol/L]",
@@ -225,7 +244,33 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
         ax2.axhspan(15, 30, color="#fff3e0", alpha=0.55, zorder=0)
 
         if input.interp():
-            ax2.plot(t_interp, fer_interp, color=fer_color, lw=2.0, alpha=0.9, zorder=1)
+            mask_fer_ok = fer_interp >= 30
+            mask_fer_warn_30 = (fer_interp < 30) & (fer_interp >= 15)
+            mask_fer_warn_15 = fer_interp < 15
+            ax2.plot(
+                t_interp,
+                np.where(mask_fer_ok, fer_interp, np.nan),
+                color=fer_color,
+                lw=2.0,
+                alpha=0.9,
+                zorder=1,
+            )
+            ax2.plot(
+                t_interp,
+                np.where(mask_fer_warn_30, fer_interp, np.nan),
+                color=fer_warn_30,
+                lw=2.0,
+                alpha=0.9,
+                zorder=1,
+            )
+            ax2.plot(
+                t_interp,
+                np.where(mask_fer_warn_15, fer_interp, np.nan),
+                color=fer_warn_15,
+                lw=2.0,
+                alpha=0.9,
+                zorder=1,
+            )
             if input.uncertainty():
                 ax2.fill_between(
                     t_interp,
@@ -236,12 +281,14 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
                     zorder=0,
                 )
 
+        ax2.plot(t, fer, color=fer_color, lw=1.6, alpha=0.8, zorder=2)
+
         ax2.plot(
             t,
             fer,
             ls="",
             marker="o",
-            ms=5,
+            ms=7,
             color=fer_color,
             mec="white",
             mew=0.6,
@@ -256,7 +303,7 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             fer[mask_fer_30],
             ls="",
             marker="o",
-            ms=6,
+            ms=8,
             color=fer_warn_30,
             mec="white",
             mew=0.5,
@@ -267,14 +314,14 @@ def plot_Hb_ferritin(axs, donor_data, model_params, Hb_thres):
             fer[mask_fer_15],
             ls="",
             marker="o",
-            ms=6,
+            ms=8,
             color=fer_warn_15,
             mec="white",
             mew=0.5,
             zorder=5,
         )
 
-        ax2.plot(t[0], fer[0], marker="o", ms=7, mfc="white", mec=fer_color, mew=1.2, ls="", zorder=6)
+        ax2.plot(t[0], fer[0], marker="o", ms=9, mfc="white", mec=fer_color, mew=1.2, ls="", zorder=6)
 
         ax2.set(
             xlabel="days since first donation",
