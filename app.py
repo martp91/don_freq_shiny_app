@@ -1,5 +1,6 @@
 from collections import namedtuple
 from copy import copy
+import io
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 import numpy as np
@@ -514,7 +515,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
                     donor_data, model_params = calc_donor_model()
                     _, ax = plt.subplots(1)
                     plot_Hb_ferritin((ax, None), donor_data, model_params, Hb_thres)
-                
+
         with ui.tooltip():
             ui.input_slider(
                 "don_freq",
@@ -570,7 +571,7 @@ with ui.nav_panel("Hb and ferritin prediction"):
             "ndons", "Number of donations", 5, min=2, max=20, step=1
         )
         ui.input_action_button("toggle_button", "Show/Hide Extra inputs")
-        
+
     @render.text
     def _():
         """Show a one-line description of the simulated donor profile."""
@@ -581,6 +582,30 @@ with ui.nav_panel("Hb and ferritin prediction"):
     with ui.panel_conditional(
         "input.toggle_button % 2 == 1",  # Show when button is clicked an odd number of times
     ):
+        @render.download(filename="donor_prediction.png", label="Save figure (.png)")
+        def download_prediction_figure():
+            """Download the currently selected prediction plot panel(s) as PNG."""
+            donor_data, model_params = calc_donor_model()
+            selected_panels = input.show_ferritin_Hb()
+            show_fer = "Ferritin" in selected_panels
+            show_hb = "Hb" in selected_panels
+
+            if show_fer and show_hb:
+                fig, (ax_hb, ax_fer) = plt.subplots(1, 2, figsize=(10.5, 4.5), constrained_layout=True)
+                plot_Hb_ferritin((ax_hb, ax_fer), donor_data, model_params, Hb_thres)
+            elif show_hb:
+                fig, ax_hb = plt.subplots(1, figsize=(6.0, 4.5), constrained_layout=True)
+                plot_Hb_ferritin((ax_hb, None), donor_data, model_params, Hb_thres)
+            else:
+                # Default to ferritin if nothing is selected in the checkbox group.
+                fig, ax_fer = plt.subplots(1, figsize=(6.0, 4.5), constrained_layout=True)
+                plot_Hb_ferritin((None, ax_fer), donor_data, model_params, Hb_thres)
+
+            with io.BytesIO() as buf:
+                fig.savefig(buf, format="png", dpi=600, bbox_inches="tight")
+                plt.close(fig)
+                yield buf.getvalue()
+
         with ui.layout_columns(): 
             ui.input_switch("uncertainty", "Uncertainty estimate", False),
             ui.input_numeric(
@@ -594,6 +619,8 @@ with ui.nav_panel("Hb and ferritin prediction"):
                 max=3,
                 step=0.01,
             )
+            
+
     
 
 def create_long_term_ferritin_table(years_future=2, sex='ave', Hb_base=None,
